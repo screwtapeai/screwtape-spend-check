@@ -1,0 +1,26 @@
+# Copy to .github/workflows/spend-check.yml in your repository.
+name: Spend check
+on:
+  pull_request:
+    paths: ["invoices/**", "examples/invoice.json"]
+  workflow_dispatch:
+
+jobs:
+  spend-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the invoice before the agent pays it
+        id: screwtape
+        uses: screwtapeai/screwtape-spend-check@v1
+        with:
+          api-key: ${{ secrets.SCREWTAPE_API_KEY }}
+          agent-output-file: examples/invoice.json
+          evidence: |
+            PO-77 for Acme Supplies: Widgets 400.00, Shipping 100.00, tax 95.00, total 595.00 USD.
+          checks: '[{"type":"sum","parts":["items.0.amount","items.1.amount","tax"],"total":"total","tolerance":0.01}]'
+
+      - name: Record the receipt
+        if: always()
+        run: echo "verdict=${{ steps.screwtape.outputs.verdict }} receipt=${{ steps.screwtape.outputs.receipt-id }}"

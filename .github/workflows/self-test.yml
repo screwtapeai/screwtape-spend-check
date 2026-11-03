@@ -1,0 +1,33 @@
+# Tests this action against the live API. Needs the repository secret SCREWTAPE_API_KEY.
+name: Self-test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pass-case:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        uses: ./
+        with:
+          api-key: ${{ secrets.SCREWTAPE_API_KEY }}
+          agent-output-file: examples/invoice.json
+          evidence: PO-77 for Acme Supplies, Widgets 400.00, Shipping 100.00, tax 95.00, total 595.00 USD.
+          checks: '[{"type":"sum","parts":["items.0.amount","items.1.amount","tax"],"total":"total","tolerance":0.01}]'
+      - run: test "${{ steps.check.outputs.action }}" = "pass"
+
+  block-case:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        uses: ./
+        continue-on-error: true
+        with:
+          api-key: ${{ secrets.SCREWTAPE_API_KEY }}
+          agent-output: '{"invoice_id":"INV-1043","vendor":"Acme Supplies","currency":"USD","items":[{"amount":400},{"amount":100}],"tax":95,"total":659}'
+          checks: '[{"type":"sum","parts":["items.0.amount","items.1.amount","tax"],"total":"total","tolerance":0.01}]'
+      - run: test "${{ steps.check.outcome }}" = "failure"

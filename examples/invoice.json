@@ -1,0 +1,1 @@
+{"invoice_id":"INV-1042","vendor":"Acme Supplies","date":"2026-10-20","currency":"USD","items":[{"desc":"Widgets","amount":400},{"desc":"Shipping","amount":100}],"tax":95,"total":595}

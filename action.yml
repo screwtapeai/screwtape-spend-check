@@ -1,0 +1,95 @@
+name: Screwtape Spend Check
+description: Check an AI agent's payment or output with Screwtape.ai before it ships, and fail the step on a block verdict.
+author: Screwtape.ai
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  api-key:
+    description: Screwtape.ai API key. Store it as a secret (for example secrets.SCREWTAPE_API_KEY).
+    required: true
+  endpoint:
+    description: "duplicate (spend check plus duplicate-invoice check) or judge (verdict on any output)."
+    required: false
+    default: duplicate
+  task:
+    description: What the agent was asked to do.
+    required: false
+    default: Decide whether the agent may pay this invoice.
+  agent-output:
+    description: The agent output to check, for example the invoice JSON. Use this or agent-output-file.
+    required: false
+    default: ""
+  agent-output-file:
+    description: Path to a file holding the agent output.
+    required: false
+    default: ""
+  evidence:
+    description: Evidence to check against (purchase order, contract), one item per line.
+    required: false
+    default: ""
+  checks:
+    description: JSON array of deterministic checks, for example [{"type":"sum","parts":["items.0.amount","tax"],"total":"total"}].
+    required: false
+    default: "[]"
+  duplicate:
+    description: JSON object for the duplicate-invoice check (endpoint duplicate only).
+    required: false
+    default: '{"vendor_path":"vendor","invoice_id_path":"invoice_id","amount_path":"total","currency_path":"currency","store":false}'
+  request-file:
+    description: Path to a complete request body (JSON). When set, it replaces task, agent-output, evidence, checks and duplicate.
+    required: false
+    default: ""
+  fail-on:
+    description: "not-pass (fail unless next_step.action is pass) or escalate (fail only on escalate)."
+    required: false
+    default: not-pass
+  idempotency-key:
+    description: Optional Idempotency-Key (8 to 128 of A-Z a-z 0-9 _ -). Re-runs with the same key are not charged twice.
+    required: false
+    default: ""
+  api-url:
+    description: API host.
+    required: false
+    default: https://screwtape.ai
+
+outputs:
+  verdict:
+    description: pass, fail or retry.
+    value: ${{ steps.check.outputs.verdict }}
+  action:
+    description: "next_step.action: pass, retry or escalate."
+    value: ${{ steps.check.outputs.action }}
+  error-type:
+    description: next_step.error_type, for example sum_mismatch or duplicate_invoice.
+    value: ${{ steps.check.outputs.error-type }}
+  duplicate-status:
+    description: unique, duplicate, possible_duplicate, replay or not_checked (endpoint duplicate only).
+    value: ${{ steps.check.outputs.duplicate-status }}
+  receipt-id:
+    description: Signed receipt id for the audit trail.
+    value: ${{ steps.check.outputs.receipt-id }}
+  request-id:
+    description: Screwtape request id.
+    value: ${{ steps.check.outputs.request-id }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/scripts/spend-check.sh"
+      env:
+        ST_API_KEY: ${{ inputs.api-key }}
+        ST_ENDPOINT: ${{ inputs.endpoint }}
+        ST_TASK: ${{ inputs.task }}
+        ST_AGENT_OUTPUT: ${{ inputs.agent-output }}
+        ST_AGENT_OUTPUT_FILE: ${{ inputs.agent-output-file }}
+        ST_EVIDENCE: ${{ inputs.evidence }}
+        ST_CHECKS: ${{ inputs.checks }}
+        ST_DUPLICATE: ${{ inputs.duplicate }}
+        ST_REQUEST_FILE: ${{ inputs.request-file }}
+        ST_FAIL_ON: ${{ inputs.fail-on }}
+        ST_IDEMPOTENCY_KEY: ${{ inputs.idempotency-key }}
+        ST_API_URL: ${{ inputs.api-url }}
